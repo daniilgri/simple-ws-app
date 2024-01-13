@@ -8,10 +8,14 @@ export class MessagesService {
   private messages: Message[] = [{ name: 'Marius', text: 'Howdy' }];
   private clientToUser: Record<string, string> = {};
 
-  create(createMessageDto: CreateMessageDto): Message {
-    this.messages.push(createMessageDto);
+  create(createMessageDto: CreateMessageDto, clientId: string): Message {
+    const message = {
+      name: this.clientToUser[clientId],
+      text: createMessageDto.text,
+    };
+    this.messages.push(message);
 
-    return createMessageDto;
+    return message;
   }
 
   findAll(): Message[] {

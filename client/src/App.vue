@@ -1,47 +1,77 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import debounce from 'lodash/debounce';
+import { io } from 'socket.io-client';
+import { ref, onBeforeMount } from 'vue';
+
+import type { Message } from '@/interfaces/messages.interface';
+import MessagesList from './components/messages-list/MessagesList.vue';
+
+const messageText = ref<string>('');
+const messages = ref<Message[]>([]);
+const isJoined = ref<boolean>(false);
+const name = ref<string>('');
+const typingDisplay = ref<string>('');
+
+const socket = io('http://127.0.0.1:3001');
+
+onBeforeMount(() => {
+  socket.emit('findAllMessages', {}, (payload: Message[]) => {
+    messages.value = payload;
+  });
+
+  socket.on('message', (payload: Message) => {
+    messages.value.push(payload);
+  });
+
+  socket.on('typing', (payload: { clientName: string; isTyping: boolean }) => {
+    if (payload.isTyping) {
+      typingDisplay.value = `${payload.clientName} is typing...`;
+    } else {
+      typingDisplay.value = '';
+    }
+  });
+});
+
+function join(): void {
+  socket.emit('join', { name: name.value }, () => {
+    isJoined.value = true;
+  });
+}
+
+function sendMessage(): void {
+  socket.emit('createMessage', { text: messageText.value }, () => {
+    messageText.value = '';
+  });
+}
+
+const emitTyping = (): void => {
+  socket.emit('typing', { isTyping: true });
+  debounce(() => {
+    socket.emit('typing', { isTyping: false });
+  }, 600)();
+};
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+  <div class="app">
+    <form v-if="!isJoined" @submit.prevent="join">
+      <label for="login-user-name-input">What's your name?</label>
+      <input v-model="name" id="login-user-name-input" type="text" />
+      <button type="submit">Join</button>
+    </form>
+    <div v-else>
+      <MessagesList :messages="messages" />
+      <div v-if="typingDisplay">{{ typingDisplay }}</div>
+      <hr />
+      <form @submit.prevent="sendMessage">
+        <label for="message-text-input"></label>
+        <input v-model="messageText" id="message-text-input" @input="emitTyping" />
+        <button type="submit">Send</button>
+      </form>
     </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  </div>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
+@import './assets/base.css';
 </style>

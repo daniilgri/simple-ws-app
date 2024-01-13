@@ -22,8 +22,11 @@ export class MessagesGateway {
   constructor(private readonly messagesService: MessagesService) {}
 
   @SubscribeMessage('createMessage')
-  create(@MessageBody() createMessageDto: CreateMessageDto) {
-    const message = this.messagesService.create(createMessageDto);
+  create(
+    @MessageBody() createMessageDto: CreateMessageDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const message = this.messagesService.create(createMessageDto, client.id);
 
     this.server.emit('message', message);
 
@@ -48,6 +51,7 @@ export class MessagesGateway {
     @MessageBody('isTyping') isTyping: boolean,
     @ConnectedSocket() client: Socket,
   ) {
+    console.log('isTyping', isTyping);
     const clientName = this.messagesService.getClientName(client.id);
 
     client.broadcast.emit('typing', { clientName, isTyping });
