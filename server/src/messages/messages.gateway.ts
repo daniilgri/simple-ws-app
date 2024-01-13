@@ -51,7 +51,6 @@ export class MessagesGateway {
     @MessageBody('isTyping') isTyping: boolean,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log('isTyping', isTyping);
     const clientName = this.messagesService.getClientName(client.id);
 
     client.broadcast.emit('typing', { clientName, isTyping });
